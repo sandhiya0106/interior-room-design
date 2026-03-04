@@ -5,6 +5,8 @@ import RequirementForm from './components/RequirementForm';
 import ThreeScene from './components/ThreeScene';
 import { motion, AnimatePresence } from 'motion/react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
 const DEFAULT_DESIGN = {
   template: 'living',
   wallColor: '#f5f5f5',
@@ -34,16 +36,50 @@ export default function App() {
   const [storedDesigns, setStoredDesigns] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('interior_designs');
-    if (saved) {
-      setStoredDesigns(JSON.parse(saved));
-    }
+    const loadDesigns = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/designs`);
+        if (!response.ok) {
+          throw new Error('API unavailable');
+        }
+
+        const designs = await response.json();
+        setStoredDesigns(designs);
+        localStorage.setItem('interior_designs', JSON.stringify(designs));
+      } catch {
+        const saved = localStorage.getItem('interior_designs');
+        if (saved) {
+          setStoredDesigns(JSON.parse(saved));
+        }
+      }
+    };
+
+    loadDesigns();
   }, []);
 
-  const saveDesign = (data) => {
-    const updated = [...storedDesigns, data];
-    setStoredDesigns(updated);
-    localStorage.setItem('interior_designs', JSON.stringify(updated));
+  const saveDesign = async (data) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/designs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Save failed');
+      }
+
+      const savedDesign = await response.json();
+      const updated = [...storedDesigns, savedDesign];
+      setStoredDesigns(updated);
+      localStorage.setItem('interior_designs', JSON.stringify(updated));
+    } catch {
+      const updated = [...storedDesigns, data];
+      setStoredDesigns(updated);
+      localStorage.setItem('interior_designs', JSON.stringify(updated));
+    }
   };
 
   const startDesignWithTemplate = (template) => {
